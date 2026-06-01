@@ -11,4 +11,9 @@ urlpatterns = [
     path('email/', views.email_inbox_view, name='email_inbox'),
     path('email/<int:email_id>/', views.review_email_view, name='email_review'),
     path('email/<int:email_id>/action/', views.approve_and_send_email_view, name='email_action'),
+    
+    # Voice Agent Routes
+    path('voice/inbound/', views.twilio_voice_webhook, name='twilio_voice_webhook'),
+    path('voice/process-speech/', views.twilio_process_speech, name='twilio_process_speech'),
+    path('dashboard/calls/', views.call_dashboard_view, name='call_dashboard'),
 ]

@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div style="margin-bottom: var(--spacing-xl);">
+    <h2 class="display-sm mb-xs">Voice Calls & Appointments</h2>
+    <p class="body-md text-muted">Manage incoming AI voice calls and scheduled meetings.</p>
+</div>
+
+<!-- KPIs -->
+<div class="grid-3 mb-xl">
+    <div class="feature-card lavender" style="border: 1px solid var(--color-hairline);">
+        <h3 class="title-md mb-xs" style="color: var(--color-ink);">Total Calls Handled</h3>
+        <h1 class="display-xl" style="color: var(--color-ink);">{{ total_calls }}</h1>
+        <p class="body-sm" style="color: var(--color-body); opacity: 0.8;">via Twilio Integration</p>
+    </div>
+    
+    <div class="feature-card cream" style="border: 1px solid var(--color-hairline);">
+        <h3 class="title-md">Upcoming Appointments</h3>
+        <h1 class="display-md" style="color: var(--color-brand-teal);">{{ total_appointments }}</h1>
+        <p class="body-sm text-muted">Scheduled by AI Assistant</p>
+    </div>
+    
+    <div class="feature-card cream" style="border: 1px solid var(--color-hairline);">
+        <h3 class="title-md">High Priority Calls</h3>
+        <h1 class="display-md" style="color: var(--color-brand-coral);">{{ high_priority_count }}</h1>
+        <p class="body-sm text-muted">Requires immediate attention</p>
+    </div>
+</div>
+
+<div class="grid-2" style="align-items: stretch;">
+    <!-- Left Column: Recent Calls -->
+    <div style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+        <h3 class="display-sm mb-sm">Recent Calls</h3>
+        
+        {% for call in recent_calls %}
+        <div class="content-card" style="padding: var(--spacing-md);">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-sm);">
+                <div>
+                    <h4 class="title-md mb-xs">{{ call.caller_phone }}</h4>
+                    <p class="body-sm text-muted">{{ call.timestamp|date:"M d, Y H:i" }}</p>
+                </div>
+                <div style="text-align: right;">
+                    <span class="badge-pill" style="
+                        {% if call.priority == 'High' %}background-color: var(--color-brand-coral); color: white;
+                        {% elif call.priority == 'Medium' %}background-color: var(--color-brand-ochre);
+                        {% else %}background-color: var(--color-brand-mint);{% endif %}
+                    ">{{ call.priority }}</span>
+                    <span class="badge-pill">{{ call.category }}</span>
+                </div>
+            </div>
+            
+            <div style="background-color: var(--color-canvas); padding: var(--spacing-sm); border-radius: var(--rounded-sm); border: 1px solid var(--color-hairline); margin-bottom: var(--spacing-sm);">
+                <p class="caption-uppercase text-muted mb-xs">Summary</p>
+                <p class="body-sm">{{ call.summary|default:"No summary available" }}</p>
+            </div>
+            
+            <details style="background-color: white; padding: var(--spacing-sm); border-radius: var(--rounded-sm); border: 1px solid var(--color-hairline);">
+                <summary style="cursor: pointer; font-weight: 500; font-size: 14px; color: var(--color-ink);">View Full Transcript</summary>
+                <p class="body-sm mt-sm" style="white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; color: var(--color-muted);">{{ call.transcript|default:"No transcript recorded" }}</p>
+            </details>
+        </div>
+        {% empty %}
+        <div class="content-card cream" style="text-align: center; padding: var(--spacing-section);">
+            <h4 class="title-md text-muted">No calls yet.</h4>
+            <p class="body-sm text-muted mt-sm">Point your Twilio phone number webhook to this server to receive calls!</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Right Column: Appointments -->
+    <div style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+        <h3 class="display-sm mb-sm">Timeline</h3>
+        
+        {% for appt in upcoming_appointments %}
+        <div class="content-card cream" style="padding: var(--spacing-md); border-left: 4px solid var(--color-brand-peach);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xs);">
+                <h4 class="title-md">{{ appt.lead.name|default:"Unknown Lead" }}</h4>
+                <span style="font-weight: 600; color: var(--color-brand-teal);">{{ appt.scheduled_time|date:"M d, P" }}</span>
+            </div>
+            <p class="body-sm mb-sm">
+                <strong>Phone:</strong> {{ appt.lead.phone_number }}<br>
+                <strong>Email:</strong> {{ appt.lead.email|default:"N/A" }}
+            </p>
+            <div style="background-color: white; padding: var(--spacing-sm); border-radius: var(--rounded-xs); border: 1px solid var(--color-hairline);">
+                <p class="body-sm text-muted">"{{ appt.notes }}"</p>
+            </div>
+        </div>
+        {% empty %}
+        <div class="content-card" style="text-align: center; padding: var(--spacing-section);">
+            <h4 class="title-md text-muted">No upcoming appointments.</h4>
+            <p class="body-sm text-muted mt-sm">When callers request a meeting, the AI will automatically schedule them here.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

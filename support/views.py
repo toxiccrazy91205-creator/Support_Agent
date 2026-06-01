@@ -186,3 +186,59 @@ def approve_and_send_email_view(request, email_id):
             
         return redirect('email_inbox')
     return redirect('email_inbox')
+
+# --- Voice Call Assistant Agent Views ---
+
+from twilio.twiml.voice_response import VoiceResponse
+from .models import CallRecord, Appointment
+from ai_engine.call_agent import process_call_transcript_ai
+
+@csrf_exempt
+def twilio_voice_webhook(request):
+    """
+    Initial webhook hit by Twilio when a call comes in.
+    """
+    response = VoiceResponse()
+    # Greet the user and gather their speech input
+    gather = response.gather(input='speech', action='/support/voice/process-speech/', method='POST', timeout=5)
+    gather.say("Hello. You have reached Agentic A I support. How can I help you today?", voice='alice')
+    
+    # If they don't say anything, it falls through to here
+    response.say("We didn't receive any input. Goodbye!", voice='alice')
+    response.hangup()
+    
+    return HttpResponse(str(response), content_type='text/xml')
+
+@csrf_exempt
+def twilio_process_speech(request):
+    """
+    Webhook hit by Twilio after capturing the user's speech.
+    """
+    speech_result = request.POST.get('SpeechResult', '')
+    caller_phone = request.POST.get('From', 'Unknown')
+    call_sid = request.POST.get('CallSid', 'Unknown')
+    
+    response = VoiceResponse()
+    
+    if speech_result:
+        # Pass to LangChain AI Engine
+        ai_spoken_response = process_call_transcript_ai(speech_result, caller_phone, call_sid)
+        response.say(ai_spoken_response, voice='alice')
+    else:
+        response.say("I'm sorry, I couldn't hear you clearly. Please try calling again.", voice='alice')
+        
+    response.hangup()
+    return HttpResponse(str(response), content_type='text/xml')
+
+def call_dashboard_view(request):
+    calls = CallRecord.objects.all().order_by('-timestamp')
+    appointments = Appointment.objects.all().order_by('-scheduled_time')
+    
+    context = {
+        'total_calls': calls.count(),
+        'total_appointments': appointments.count(),
+        'high_priority_count': calls.filter(priority='High').count(),
+        'recent_calls': calls[:15],
+        'upcoming_appointments': appointments[:10]
+    }
+    return render(request, 'call_dashboard.html', context)
