@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-md); flex-wrap: wrap; gap: var(--spacing-md);">
+    <div style="flex: 1; margin-right: var(--spacing-xl);">
+        <h2 class="display-sm mb-xs">Email Inbox</h2>
+        <p class="body-md text-muted mb-sm">AI-categorized emails waiting for human review.</p>
+        <details style="background-color: var(--color-canvas); padding: var(--spacing-sm); border-radius: var(--rounded-md); border: 1px solid var(--color-hairline);">
+            <summary style="cursor: pointer; font-weight: 500; color: var(--color-ink);">How to find your Gmail App Password</summary>
+            <ol class="body-sm text-muted mt-xs" style="margin-left: 20px;">
+                <li>Go to your Google Account -> Security.</li>
+                <li>Ensure 2-Step Verification is turned ON.</li>
+                <li>Search for "App Passwords" in the Security search bar.</li>
+                <li>Create a new app named "Agentic AI" and generate the 16-character password.</li>
+            </ol>
+        </details>
+    </div>
+    <div style="background-color: var(--color-canvas); padding: var(--spacing-md); border-radius: var(--rounded-lg); border: 1px solid var(--color-hairline); width: 350px;">
+        <h4 class="title-sm mb-xs">Fetch Emails via IMAP</h4>
+        <form method="POST" style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+            {% csrf_token %}
+            <input type="email" name="imap_user" placeholder="your_email@gmail.com" required class="text-input" style="width: 100%; padding: 8px; border: 1px solid var(--color-hairline); border-radius: var(--rounded-sm);">
+            <input type="password" name="imap_password" placeholder="16-digit App Password" required class="text-input" style="width: 100%; padding: 8px; border: 1px solid var(--color-hairline); border-radius: var(--rounded-sm);">
+            <button type="submit" class="btn-primary" style="background-color: var(--color-brand-pink); width: 100%; margin-top: var(--spacing-xs);">Fetch Unread Emails</button>
+        </form>
+    </div>
+</div>
+
+<div style="display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-lg); border-bottom: 1px solid var(--color-hairline); padding-bottom: var(--spacing-sm);">
+    <a href="?tab=Pending Review" class="{% if current_tab == 'Pending Review' %}btn-primary{% else %}btn-secondary{% endif %}" style="{% if current_tab == 'Pending Review' %}background-color: var(--color-ink);{% endif %}">Pending</a>
+    <a href="?tab=Sent" class="{% if current_tab == 'Sent' %}btn-primary{% else %}btn-secondary{% endif %}" style="{% if current_tab == 'Sent' %}background-color: var(--color-brand-teal);{% endif %}">Approved & Sent</a>
+    <a href="?tab=Ignored" class="{% if current_tab == 'Ignored' %}btn-primary{% else %}btn-secondary{% endif %}" style="{% if current_tab == 'Ignored' %}background-color: var(--color-brand-coral);{% endif %}">Ignored</a>
+</div>
+
+<div class="grid-1" style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+    {% for email in emails %}
+    <div class="content-card" style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-md);">
+        <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-xxs);">
+                <span class="badge-pill" style="
+                    {% if email.priority == 'High' %}background-color: var(--color-brand-coral); color: white;
+                    {% elif email.priority == 'Medium' %}background-color: var(--color-brand-ochre);
+                    {% else %}background-color: var(--color-brand-mint);{% endif %}
+                ">{{ email.priority }}</span>
+                <span class="badge-pill">{{ email.category }}</span>
+                {% if email.is_lead %}
+                <span class="badge-pill" style="background-color: var(--color-brand-lavender);">Lead Detected</span>
+                {% endif %}
+            </div>
+            <h4 class="title-md">{{ email.subject }}</h4>
+            <p class="body-sm text-muted">{{ email.sender_email }}</p>
+        </div>
+        <div>
+            {% if email.status == 'Pending Review' %}
+                <a href="{% url 'email_review' email.id %}" class="btn-secondary">Review & Reply</a>
+            {% else %}
+                <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                    <span style="font-weight: 500; color: {% if email.status == 'Sent' %}var(--color-brand-teal){% else %}var(--color-brand-coral){% endif %};">{{ email.status }}</span>
+                    <a href="{% url 'email_review' email.id %}" class="btn-secondary" style="padding: 8px 16px;">View Details</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="content-card cream" style="text-align: center; padding: var(--spacing-section);">
+        <h4 class="title-md text-muted">No emails found here!</h4>
+        <p class="body-sm text-muted mt-sm">This folder is currently empty.</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

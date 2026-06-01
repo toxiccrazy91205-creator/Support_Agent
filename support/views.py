@@ -1,8 +1,10 @@
 import json
 import requests
+import os
+import logging
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
 from .models import Lead, InteractionLog, Customer
 from ai_engine.graph import run_whatsapp_agent
@@ -137,3 +139,50 @@ def chat_logs_view(request):
 
 def chat_tester_view(request):
     return render(request, 'chat_tester.html')
+
+# --- Email Management Agent Views ---
+
+from .models import EmailRecord
+from ai_engine.email_agent import run_email_agent, send_approved_email
+
+def email_inbox_view(request):
+    if request.method == 'POST':
+        imap_user = request.POST.get('imap_user')
+        imap_password = request.POST.get('imap_password')
+        # Trigger IMAP Fetch with dynamic credentials (or None to fallback to .env)
+        run_email_agent(imap_user=imap_user, imap_password=imap_password)
+        return redirect('email_inbox')
+        
+    current_tab = request.GET.get('tab', 'Pending Review')
+    if current_tab not in ['Pending Review', 'Sent', 'Ignored']:
+        current_tab = 'Pending Review'
+        
+    emails = EmailRecord.objects.filter(status=current_tab).order_by('-created_at')
+    
+    # Sort logically by priority (High -> Medium -> Low)
+    priority_map = {'High': 0, 'Medium': 1, 'Low': 2}
+    sorted_emails = sorted(emails, key=lambda x: priority_map.get(x.priority, 3))
+    
+    return render(request, 'email_inbox.html', {
+        'emails': sorted_emails,
+        'current_tab': current_tab
+    })
+
+def review_email_view(request, email_id):
+    email = get_object_or_404(EmailRecord, id=email_id)
+    return render(request, 'email_review.html', {'email': email})
+
+def approve_and_send_email_view(request, email_id):
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        email = get_object_or_404(EmailRecord, id=email_id)
+        
+        if action == 'send':
+            edited_body = request.POST.get('draft_response', '')
+            send_approved_email(email.id, edited_body)
+        elif action == 'ignore':
+            email.status = 'Ignored'
+            email.save()
+            
+        return redirect('email_inbox')
+    return redirect('email_inbox')
