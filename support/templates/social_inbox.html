@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-md); flex-wrap: wrap; gap: var(--spacing-md);">
+    <div style="flex: 1; margin-right: var(--spacing-xl);">
+        <h2 class="display-sm mb-xs">Social Media Inbox</h2>
+        <p class="body-md text-muted mb-sm">AI-processed incoming messages from Instagram, X, Facebook, and LinkedIn.</p>
+    </div>
+    
+    <!-- Utility to mock social data since API isn't live yet -->
+    <div style="background-color: var(--color-canvas); padding: var(--spacing-md); border-radius: var(--rounded-lg); border: 1px solid var(--color-hairline); width: 350px;">
+        <h4 class="title-sm mb-xs">Simulate Incoming Message</h4>
+        <form method="POST" action="{% url 'seed_social_data' %}" style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+            {% csrf_token %}
+            <div style="display: flex; gap: var(--spacing-xs);">
+                <select name="platform" class="text-input" style="flex: 1; padding: 8px;">
+                    <option value="Instagram">Instagram</option>
+                    <option value="X">X (Twitter)</option>
+                    <option value="LinkedIn">LinkedIn</option>
+                    <option value="Facebook">Facebook</option>
+                </select>
+                <select name="message_type" class="text-input" style="flex: 1; padding: 8px;">
+                    <option value="DM">DM</option>
+                    <option value="Comment">Comment</option>
+                </select>
+            </div>
+            <input type="text" name="sender_handle" placeholder="@username" class="text-input" required>
+            <textarea name="content" placeholder="Message content..." class="text-input" style="height: 60px; resize: none;" required></textarea>
+            <button type="submit" class="btn-primary" style="background-color: var(--color-brand-lavender); color: var(--color-ink); width: 100%; margin-top: var(--spacing-xs);">Process via AI Agent</button>
+        </form>
+    </div>
+</div>
+
+<div style="display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); border-bottom: 1px solid var(--color-hairline); padding-bottom: var(--spacing-sm); overflow-x: auto;">
+    <a href="?tab=Pending Review" class="title-sm" style="text-decoration: none; padding: 8px 16px; border-radius: var(--rounded-pill); {% if current_tab == 'Pending Review' %}background-color: var(--color-ink); color: white;{% else %}color: var(--color-ink);{% endif %}">Pending Review</a>
+    <a href="?tab=Escalated" class="title-sm" style="text-decoration: none; padding: 8px 16px; border-radius: var(--rounded-pill); {% if current_tab == 'Escalated' %}background-color: var(--color-ink); color: white;{% else %}color: var(--color-ink);{% endif %}">Escalated</a>
+    <a href="?tab=Replied" class="title-sm" style="text-decoration: none; padding: 8px 16px; border-radius: var(--rounded-pill); {% if current_tab == 'Replied' %}background-color: var(--color-ink); color: white;{% else %}color: var(--color-ink);{% endif %}">Replied</a>
+    <a href="?tab=Ignored" class="title-sm" style="text-decoration: none; padding: 8px 16px; border-radius: var(--rounded-pill); {% if current_tab == 'Ignored' %}background-color: var(--color-ink); color: white;{% else %}color: var(--color-ink);{% endif %}">Ignored</a>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: var(--spacing-md);">
+    {% for msg in messages %}
+    <div class="content-card" style="display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-md); border-left: 4px solid {% if msg.platform == 'Instagram' %}var(--color-brand-pink){% elif msg.platform == 'LinkedIn' %}var(--color-brand-lavender){% elif msg.platform == 'X' %}var(--color-brand-teal){% else %}var(--color-brand-peach){% endif %};">
+        <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-xxs);">
+                <span class="badge-pill" style="
+                    {% if msg.priority == 'High' %}background-color: var(--color-brand-coral); color: white;
+                    {% elif msg.priority == 'Medium' %}background-color: var(--color-brand-ochre);
+                    {% else %}background-color: var(--color-brand-mint);{% endif %}
+                ">{{ msg.priority }}</span>
+                <span class="badge-pill" style="background-color: var(--color-surface-strong);">{{ msg.platform }} {{ msg.message_type }}</span>
+                {% if msg.is_lead %}
+                <span class="badge-pill" style="background-color: var(--color-brand-lavender);">Potential Lead</span>
+                {% endif %}
+            </div>
+            <h4 class="title-md">{{ msg.sender_handle }}</h4>
+            <p class="body-sm text-muted mt-xs" style="max-width: 800px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ msg.content }}</p>
+        </div>
+        
+        <div>
+            {% if msg.status == 'Pending Review' or msg.status == 'Escalated' %}
+                <a href="{% url 'social_review' msg.id %}" class="btn-secondary" style="{% if msg.status == 'Escalated' %}border-color: var(--color-brand-coral); color: var(--color-brand-coral);{% endif %}">Review & Action</a>
+            {% else %}
+                <div style="display: flex; align-items: center; gap: var(--spacing-sm);">
+                    <span style="font-weight: 500; color: {% if msg.status == 'Replied' %}var(--color-brand-teal){% else %}var(--color-muted){% endif %};">{{ msg.status }}</span>
+                    <a href="{% url 'social_review' msg.id %}" class="btn-secondary" style="padding: 8px 16px;">View Details</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="content-card cream" style="text-align: center; padding: var(--spacing-section);">
+        <h4 class="title-md text-muted">No messages found.</h4>
+        <p class="body-sm text-muted mt-sm">Use the simulator form to test the AI agent!</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

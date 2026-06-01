@@ -70,3 +70,26 @@ class Appointment(models.Model):
     def __str__(self):
         lead_name = self.lead.name if self.lead and self.lead.name else "Unknown Lead"
         return f"Appointment with {lead_name} at {self.scheduled_time}"
+
+class SocialMessage(models.Model):
+    STATUS_CHOICES = (
+        ('Pending Review', 'Pending Review'),
+        ('Replied', 'Replied'),
+        ('Escalated', 'Escalated'),
+        ('Ignored', 'Ignored'),
+    )
+
+    platform = models.CharField(max_length=50) # Instagram, Facebook, X, LinkedIn
+    message_type = models.CharField(max_length=50) # DM, Comment
+    sender_handle = models.CharField(max_length=100)
+    content = models.TextField()
+    category = models.CharField(max_length=50, blank=True, null=True)
+    priority = models.CharField(max_length=20, blank=True, null=True)
+    summary = models.TextField(blank=True, null=True)
+    draft_response = models.TextField(blank=True, null=True)
+    is_lead = models.BooleanField(default=False)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Pending Review')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.platform} {self.message_type} from {self.sender_handle}"

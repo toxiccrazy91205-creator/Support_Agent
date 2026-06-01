@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div style="margin-bottom: var(--spacing-md); display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <h2 class="display-sm mb-xs">Review Social Message</h2>
+        <p class="body-md text-muted">Review and reply to DMs and comments directly.</p>
+    </div>
+    <a href="{% url 'social_inbox' %}" class="btn-secondary">&larr; Back to Inbox</a>
+</div>
+
+<div class="grid-2" style="align-items: stretch;">
+    <!-- Left Column: Context -->
+    <div style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
+        <div class="content-card featured" style="padding: var(--spacing-md); {% if msg.status == 'Escalated' %}background-color: var(--color-brand-coral);{% endif %}">
+            <h4 class="title-sm" style="color: white;">AI Analysis Summary</h4>
+            <p class="body-sm mt-xs" style="color: rgba(255,255,255,0.9);">{{ msg.summary }}</p>
+        </div>
+        
+        <div class="content-card cream" style="flex: 1; display: flex; flex-direction: column;">
+            <h4 class="title-sm mb-xs">Original Message</h4>
+            <div style="margin-bottom: var(--spacing-sm); border-bottom: 1px solid var(--color-hairline); padding-bottom: var(--spacing-xs);">
+                <div style="display: flex; align-items: center; gap: var(--spacing-xs); margin-bottom: var(--spacing-xxs);">
+                    <span class="badge-pill" style="
+                        {% if msg.priority == 'High' %}background-color: var(--color-brand-coral); color: white;
+                        {% elif msg.priority == 'Medium' %}background-color: var(--color-brand-ochre);
+                        {% else %}background-color: var(--color-brand-mint);{% endif %}
+                    ">{{ msg.priority }}</span>
+                    <span class="badge-pill" style="background-color: var(--color-surface-strong);">{{ msg.platform }} {{ msg.message_type }}</span>
+                    {% if msg.is_lead %}
+                    <span class="badge-pill" style="background-color: var(--color-brand-lavender);">Potential Lead</span>
+                    {% endif %}
+                    {% if msg.status == 'Escalated' %}
+                    <span class="badge-pill" style="background-color: var(--color-ink); color: white;">Escalated</span>
+                    {% endif %}
+                </div>
+                <h4 class="title-md">{{ msg.sender_handle }}</h4>
+                <p class="body-sm text-muted">via {{ msg.platform }}</p>
+            </div>
+            
+            <div style="background-color: white; padding: var(--spacing-sm); border-radius: var(--rounded-md); border: 1px solid var(--color-hairline); flex-grow: 1; overflow-y: auto; max-height: 250px; word-break: break-word; overflow-wrap: anywhere;">
+                <p class="body-sm" style="white-space: pre-wrap; font-family: inherit; word-break: break-word;">{{ msg.content }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Action -->
+    <div class="content-card" style="display: flex; flex-direction: column;">
+        <h4 class="title-sm mb-sm">AI Drafted Reply</h4>
+        
+        {% if msg.status == 'Pending Review' or msg.status == 'Escalated' %}
+        <form method="POST" action="{% url 'social_action' msg.id %}" style="display: flex; flex-direction: column; flex-grow: 1;">
+            {% csrf_token %}
+            
+            <textarea name="draft_response" class="text-input" style="flex-grow: 1; min-height: 250px; resize: none; margin-bottom: var(--spacing-md); padding: var(--spacing-sm); font-family: inherit; line-height: 1.5;">{{ msg.draft_response }}</textarea>
+            
+            <div style="display: flex; gap: var(--spacing-sm);">
+                <button type="submit" name="action" value="reply" class="btn-primary" style="flex: 3; background-color: var(--color-brand-teal);">Send Reply</button>
+                {% if msg.status != 'Escalated' %}
+                <button type="submit" name="action" value="escalate" class="btn-secondary" style="flex: 2; border-color: var(--color-brand-coral); color: var(--color-brand-coral);">Escalate</button>
+                {% endif %}
+                <button type="submit" name="action" value="ignore" class="btn-secondary" style="flex: 1;">Ignore</button>
+            </div>
+        </form>
+        {% else %}
+        <div style="display: flex; flex-direction: column; flex-grow: 1;">
+            <textarea readonly class="text-input" style="flex-grow: 1; min-height: 250px; resize: none; margin-bottom: var(--spacing-md); padding: var(--spacing-sm); font-family: inherit; line-height: 1.5; background-color: var(--color-surface-soft); color: var(--color-muted);">{{ msg.draft_response }}</textarea>
+            
+            <div style="padding: var(--spacing-sm); border-radius: var(--rounded-md); text-align: center; background-color: {% if msg.status == 'Replied' %}var(--color-brand-mint){% else %}var(--color-surface-strong){% endif %};">
+                <p class="title-sm" style="color: var(--color-ink);">This message was marked as <strong>{{ msg.status }}</strong>.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

@@ -242,3 +242,65 @@ def call_dashboard_view(request):
         'upcoming_appointments': appointments[:10]
     }
     return render(request, 'call_dashboard.html', context)
+
+# --- Social Media Reply Agent Views ---
+
+from .models import SocialMessage
+from ai_engine.social_agent import process_social_message_ai
+
+def social_inbox_view(request):
+    current_tab = request.GET.get('tab', 'Pending Review')
+    if current_tab not in ['Pending Review', 'Replied', 'Escalated', 'Ignored']:
+        current_tab = 'Pending Review'
+        
+    messages = SocialMessage.objects.filter(status=current_tab).order_by('-created_at')
+    
+    # Sort logically by priority (High -> Medium -> Low)
+    priority_map = {'High': 0, 'Medium': 1, 'Low': 2}
+    sorted_messages = sorted(messages, key=lambda x: priority_map.get(x.priority, 3))
+    
+    return render(request, 'social_inbox.html', {
+        'messages': sorted_messages,
+        'current_tab': current_tab
+    })
+
+def social_review_view(request, msg_id):
+    msg = get_object_or_404(SocialMessage, id=msg_id)
+    return render(request, 'social_review.html', {'msg': msg})
+
+def social_action_view(request, msg_id):
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        msg = get_object_or_404(SocialMessage, id=msg_id)
+        
+        if action == 'reply':
+            # In a real app, this sends the drafted response via platform API
+            edited_body = request.POST.get('draft_response', '')
+            msg.draft_response = edited_body
+            msg.status = 'Replied'
+            msg.save()
+        elif action == 'escalate':
+            msg.status = 'Escalated'
+            msg.save()
+        elif action == 'ignore':
+            msg.status = 'Ignored'
+            msg.save()
+            
+        return redirect('social_inbox')
+    return redirect('social_inbox')
+
+@csrf_exempt
+def seed_social_data_view(request):
+    """
+    Utility endpoint to mock incoming social messages for testing.
+    """
+    if request.method == 'POST':
+        platform = request.POST.get('platform', 'X')
+        message_type = request.POST.get('message_type', 'DM')
+        sender_handle = request.POST.get('sender_handle', '@test_user')
+        content = request.POST.get('content', '')
+        
+        if content:
+            process_social_message_ai(platform, message_type, sender_handle, content)
+            
+    return redirect('social_inbox')
