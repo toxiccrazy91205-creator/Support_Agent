@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div style="max-width: 800px; margin: 0 auto;">
+    <h2 class="display-sm mb-lg" style="text-align: center;">Test WhatsApp Agent</h2>
+    <p class="body-md text-muted mb-xl" style="text-align: center;">Simulate a conversation with your agentic workflow.</p>
+
+    <!-- Product Mockup Card -->
+    <div class="content-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+        
+        <div id="chat-window" class="chat-window">
+            <!-- Chat messages go here -->
+            <div class="chat-bubble agent" style="margin-bottom: var(--spacing-sm);">
+                <strong>Agent:</strong><br>Hello! I'm your AI assistant. How can I help you today?
+            </div>
+        </div>
+        
+        <div style="background-color: var(--color-surface-soft); padding: var(--spacing-md); border-top: 1px solid var(--color-hairline);">
+            <form id="chat-form" style="display: flex; gap: var(--spacing-sm);">
+                <input type="text" id="phone_number" class="text-input" value="1234567890" style="width: 150px;" placeholder="Phone #">
+                <input type="text" id="message" class="text-input" placeholder="Type a message..." required style="flex-grow: 1;">
+                <button type="submit" class="btn-primary">Send</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('chat-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const phone = document.getElementById('phone_number').value;
+        const msg = document.getElementById('message').value;
+        const chatWindow = document.getElementById('chat-window');
+        
+        if (!msg.trim()) return;
+
+        chatWindow.innerHTML += `
+            <div class="chat-bubble user" style="margin-bottom: var(--spacing-sm);">
+                <strong>You (${phone}):</strong><br>${msg}
+            </div>`;
+        
+        document.getElementById('message').value = '';
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+
+        fetch("{% url 'whatsapp_webhook' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from: phone, text: msg })
+        })
+        .then(response => response.json())
+        .then(data => {
+            let aiResponse = data.reply || data.error || 'No response';
+            let intent = data.intent ? `<br><span class="badge-pill" style="margin-top: 8px;">Intent: ${data.intent}</span>` : '';
+            let media = data.media_link ? `<br><a href="${data.media_link}" target="_blank" style="color: var(--color-brand-pink);">Attachment</a>` : '';
+
+            chatWindow.innerHTML += `
+                <div class="chat-bubble agent" style="margin-bottom: var(--spacing-sm);">
+                    <strong>Agent:</strong><br>${aiResponse.replace(/\n/g, '<br>')}${media}${intent}
+                </div>`;
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        })
+        .catch(err => {
+            console.error(err);
+            chatWindow.innerHTML += `
+                <div class="chat-bubble agent" style="background-color: var(--color-brand-coral); margin-bottom: var(--spacing-sm);">
+                    <strong>Error:</strong><br>Failed to connect to webhook.
+                </div>`;
+        });
+    });
+</script>
+
+{% endblock %}

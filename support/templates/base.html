@@ -1,0 +1,63 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Agent Dashboard</title>
+    <!-- Custom Clay Design System CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    
+    <!-- Top Nav Component -->
+    <nav class="top-nav">
+        <div class="container nav-container">
+            <a href="{% url 'dashboard' %}" class="nav-logo">Agentic.ai</a>
+            
+            <div class="nav-links">
+                <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
+                <a class="nav-link" href="{% url 'chat_logs' %}">Chat Logs</a>
+                <a class="nav-link" href="{% url 'chat_tester' %}">Chat Tester</a>
+            </div>
+            
+            <div class="nav-actions">
+                <a href="{% url 'chat_tester' %}" class="btn-primary">Try free</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container section-spacing">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer Component -->
+    <footer class="footer">
+        <div class="container grid-4">
+            <div>
+                <a href="#" class="nav-logo" style="margin-bottom: 24px; display: block;">Agentic.ai</a>
+                <p class="body-sm text-muted">Go to market with unique data using autonomous agents directly on WhatsApp.</p>
+            </div>
+            <div>
+                <h4 class="title-sm mb-lg">Product</h4>
+                <p class="body-sm text-muted">Agent Runs</p>
+                <p class="body-sm text-muted">Sequencer</p>
+                <p class="body-sm text-muted">CRM Enrichment</p>
+            </div>
+            <div>
+                <h4 class="title-sm mb-lg">Solutions</h4>
+                <p class="body-sm text-muted">For Sales</p>
+                <p class="body-sm text-muted">For Growth</p>
+                <p class="body-sm text-muted">For Support</p>
+            </div>
+            <div>
+                <h4 class="title-sm mb-lg">Resources</h4>
+                <p class="body-sm text-muted">Documentation</p>
+                <p class="body-sm text-muted">Experts</p>
+                <p class="body-sm text-muted">Community</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

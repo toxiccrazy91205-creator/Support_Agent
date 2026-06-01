@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-band mb-xl">
+    <div class="hero-content">
+        <h1 class="display-xl mb-md">Go to market with unique data</h1>
+        <p class="body-md text-muted mb-lg">Automate your entire WhatsApp sales funnel with autonomous AI agents directly from your dashboard.</p>
+        <a href="{% url 'chat_tester' %}" class="btn-primary">Test the Agent</a>
+    </div>
+    <div class="hero-image">
+        <!-- 3D Claymation Artifact -->
+        <img src="{% static 'img/clay_hero.png' %}" alt="3D Claymation Illustration">
+    </div>
+</div>
+
+<h2 class="display-sm mb-lg">Admin Dashboard</h2>
+
+<div class="grid-3 mb-xl">
+    <!-- Featured Teal Metric Card -->
+    <div class="content-card featured" style="border-radius: var(--rounded-xl); padding: var(--spacing-xl);">
+        <h3 class="title-md mb-xs">Total Leads Captured</h3>
+        <h1 class="display-xl">{{ lead_count }}</h1>
+        <p class="body-sm" style="opacity: 0.8;">via WhatsApp Bot</p>
+    </div>
+    
+    <div class="feature-card pink">
+        <h3 class="title-md">Lead Generation</h3>
+        <p class="body-sm">AI auto-extracts Name, Email, and Company from conversational chat flows.</p>
+    </div>
+    
+    <div class="feature-card ochre">
+        <h3 class="title-md">FAQ Resolution</h3>
+        <p class="body-sm">Powered by ChromaDB, instantly resolving customer queries based on your knowledge base.</p>
+    </div>
+</div>
+
+<h3 class="display-sm mb-md">Recent Leads</h3>
+
+<!-- Flat Grid Replacement for Table -->
+<div class="grid-2">
+    {% for lead in leads %}
+    <div class="content-card cream" style="border-radius: var(--rounded-lg);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-sm);">
+            <div>
+                <h4 class="title-md">{{ lead.name|default:"Unknown" }}</h4>
+                <p class="body-sm text-muted">{{ lead.company|default:"No Company" }}</p>
+            </div>
+            <span class="badge-pill success">{{ lead.status }}</span>
+        </div>
+        
+        <div class="mb-sm">
+            <p class="body-sm"><strong>Phone:</strong> {{ lead.phone_number }}</p>
+            <p class="body-sm"><strong>Email:</strong> {{ lead.email|default:"Not provided" }}</p>
+        </div>
+        
+        <div style="background-color: var(--color-canvas); padding: var(--spacing-sm); border-radius: var(--rounded-sm); border: 1px solid var(--color-hairline);">
+            <p class="caption-uppercase text-muted mb-xs">Requirements</p>
+            <p class="body-sm">{{ lead.requirements|default:"None extracted" }}</p>
+        </div>
+    </div>
+    {% empty %}
+    <div class="content-card" style="grid-column: 1 / -1; text-align: center; padding: var(--spacing-section);">
+        <h4 class="title-md text-muted">No leads captured yet.</h4>
+        <p class="body-sm text-muted mt-sm">Run the WhatsApp bot to capture some leads!</p>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}

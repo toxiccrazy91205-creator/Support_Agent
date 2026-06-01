@@ -1,0 +1,9 @@
+Django>=4.2
+langchain
+langgraph
+langchain-openai
+chromadb
+pydantic
+gunicorn
+python-dotenv
+requests
