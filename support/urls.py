@@ -16,6 +16,7 @@ urlpatterns = [
     path('voice/inbound/', views.twilio_voice_webhook, name='twilio_voice_webhook'),
     path('voice/process-speech/', views.twilio_process_speech, name='twilio_process_speech'),
     path('dashboard/calls/', views.call_dashboard_view, name='call_dashboard'),
+    path('api/process-voice/', views.process_voice_api, name='process_voice_api'),
     
     # Social Media Reply Agent Routes
     path('social/', views.social_inbox_view, name='social_inbox'),

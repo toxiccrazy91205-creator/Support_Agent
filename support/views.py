@@ -6,8 +6,9 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
-from .models import Lead, InteractionLog, Customer
+from .models import Customer, Lead, VoiceLead, VoiceSession, InteractionLog, EmailRecord, CallRecord, Appointment
 from ai_engine.graph import run_whatsapp_agent
+from ai_engine.browser_voice_agent import run_assistant_pipeline
 
 def send_whatsapp_message(phone, text, media_link=None):
     if not settings.WHATSAPP_API_TOKEN or not settings.WHATSAPP_PHONE_NUMBER_ID:
@@ -233,15 +234,89 @@ def twilio_process_speech(request):
 def call_dashboard_view(request):
     calls = CallRecord.objects.all().order_by('-timestamp')
     appointments = Appointment.objects.all().order_by('-scheduled_time')
+    voice_sessions = VoiceSession.objects.all().order_by('-created_at')
+    leads = VoiceLead.objects.all().order_by('-id')
     
     context = {
         'total_calls': calls.count(),
         'total_appointments': appointments.count(),
         'high_priority_count': calls.filter(priority='High').count(),
         'recent_calls': calls[:15],
-        'upcoming_appointments': appointments[:10]
+        'upcoming_appointments': appointments[:10],
+        'voice_sessions': voice_sessions,
+        'leads': leads
     }
     return render(request, 'call_dashboard.html', context)
+
+@csrf_exempt
+def process_voice_api(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            message = data.get('message', '')
+            session_history = data.get('session_history', [])
+            session_id = data.get('session_id', '')
+            
+            result = run_assistant_pipeline(message, session_history)
+            
+            ai_response = result.get('ai_response', 'I am sorry, I did not understand that.')
+            extracted_data = result.get('extracted_lead_data', {})
+            lead_score = result.get('lead_score', 0)
+            summary = result.get('summary', '')
+            action_items = result.get('action_items', '')
+            
+            email = extracted_data.get('email')
+            phone = extracted_data.get('phone')
+            lead = None
+            if phone or email:
+                # Try phone first
+                if phone:
+                    lead, _ = VoiceLead.objects.get_or_create(phone=phone)
+                elif email:
+                    lead, _ = VoiceLead.objects.get_or_create(email=email)
+            else:
+                if any(extracted_data.values()):
+                    lead = VoiceLead.objects.create()
+                    
+            if lead:
+                if extracted_data.get('name'): lead.name = extracted_data['name']
+                if extracted_data.get('phone'): lead.phone = extracted_data['phone']
+                if extracted_data.get('email'): lead.email = extracted_data['email']
+                if extracted_data.get('company'): lead.company = extracted_data['company']
+                if extracted_data.get('requirement'): lead.requirement = extracted_data['requirement']
+                if lead_score > lead.lead_score:
+                    lead.lead_score = lead_score
+                lead.save()
+
+            full_transcript = ""
+            for msg in session_history:
+                full_transcript += f"{msg.get('role', 'unknown')}: {msg.get('content', '')}\n"
+            full_transcript += f"user: {message}\n"
+            full_transcript += f"ai: {ai_response}\n"
+
+            if session_id:
+                session, _ = VoiceSession.objects.get_or_create(session_id=session_id)
+                session.lead = lead
+                session.transcript = full_transcript
+                session.summary = summary
+                session.action_items = action_items
+                session.save()
+            else:
+                VoiceSession.objects.create(
+                    lead=lead,
+                    transcript=full_transcript,
+                    summary=summary,
+                    action_items=action_items
+                )
+
+            return JsonResponse({
+                'response': ai_response,
+                'is_complete': False
+            })
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+            
+    return JsonResponse({'error': 'Invalid request'}, status=400)
 
 # --- Social Media Reply Agent Views ---
 

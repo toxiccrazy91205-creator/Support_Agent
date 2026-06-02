@@ -1,97 +1,355 @@
 {% extends 'base.html' %}
 {% block content %}
-
 <div style="margin-bottom: var(--spacing-xl);">
-    <h2 class="display-sm mb-xs">Voice Calls & Appointments</h2>
-    <p class="body-md text-muted">Manage incoming AI voice calls and scheduled meetings.</p>
+    <h2 class="display-sm mb-xs">Voice CRM Assistant</h2>
+    <p class="body-md text-muted">Test the AI voice assistant directly in your browser.</p>
 </div>
 
-<!-- KPIs -->
-<div class="grid-3 mb-xl">
-    <div class="feature-card lavender" style="border: 1px solid var(--color-hairline);">
-        <h3 class="title-md mb-xs" style="color: var(--color-ink);">Total Calls Handled</h3>
-        <h1 class="display-xl" style="color: var(--color-ink);">{{ total_calls }}</h1>
-        <p class="body-sm" style="color: var(--color-body); opacity: 0.8;">via Twilio Integration</p>
-    </div>
+<!-- Browser Voice Simulator Section -->
+<style>
+    .mic-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: var(--spacing-xl);
+    }
+    .mic-btn {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        font-size: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        background-color: var(--color-brand-teal);
+        color: white;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .mic-btn.listening {
+        background-color: var(--color-brand-coral);
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+    #status { margin-top: 15px; font-size: 1rem; color: var(--color-muted); }
+    #chat-log { max-height: 250px; overflow-y: auto; width: 100%; margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
     
-    <div class="feature-card cream" style="border: 1px solid var(--color-hairline);">
-        <h3 class="title-md">Upcoming Appointments</h3>
-        <h1 class="display-md" style="color: var(--color-brand-teal);">{{ total_appointments }}</h1>
-        <p class="body-sm text-muted">Scheduled by AI Assistant</p>
-    </div>
-    
-    <div class="feature-card cream" style="border: 1px solid var(--color-hairline);">
-        <h3 class="title-md">High Priority Calls</h3>
-        <h1 class="display-md" style="color: var(--color-brand-coral);">{{ high_priority_count }}</h1>
-        <p class="body-sm text-muted">Requires immediate attention</p>
-    </div>
-</div>
+    .chat-bubble {
+        padding: 10px 15px;
+        border-radius: var(--rounded-md);
+        font-size: 14px;
+        max-width: 80%;
+    }
+    .chat-bubble.user {
+        background-color: var(--color-brand-teal);
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 0;
+    }
+    .chat-bubble.ai {
+        background-color: var(--color-canvas);
+        border: 1px solid var(--color-hairline);
+        color: var(--color-ink);
+        align-self: flex-start;
+        border-bottom-left-radius: 0;
+    }
+</style>
 
-<div class="grid-2" style="align-items: stretch;">
-    <!-- Left Column: Recent Calls -->
-    <div style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
-        <h3 class="display-sm mb-sm">Recent Calls</h3>
+<div class="content-card mb-xl" style="padding: var(--spacing-lg);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md);">
+        <h3 class="display-sm">Browser Voice Simulator</h3>
+        <button class="btn btn-primary btn-sm" id="new-chat-btn">+ New Chat</button>
+    </div>
+    
+    <div style="display: flex; gap: var(--spacing-lg);">
+        <!-- History Sidebar -->
+        <div style="flex: 0 0 250px; max-height: 400px; overflow-y: auto; border-right: 1px solid var(--color-hairline); padding-right: var(--spacing-md);">
+            <h4 class="title-md mb-sm">Session History</h4>
+            <div style="display: flex; flex-direction: column; gap: var(--spacing-xs);">
+                {% for session in voice_sessions %}
+                <a href="#" class="history-item" style="display: block; padding: var(--spacing-sm); border-radius: var(--rounded-xs); border: 1px solid var(--color-hairline); text-decoration: none; color: var(--color-ink); background-color: var(--color-canvas);" data-transcript="{{ session.transcript|escape }}">
+                    <small class="text-muted" style="display: block; margin-bottom: 4px;">{{ session.created_at|date:"M d, Y H:i" }}</small>
+                    <strong>{{ session.lead.name|default:"Unknown User" }}</strong>
+                </a>
+                {% empty %}
+                <p class="body-sm text-muted">No history found.</p>
+                {% endfor %}
+            </div>
+        </div>
         
-        {% for call in recent_calls %}
-        <div class="content-card" style="padding: var(--spacing-md);">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--spacing-sm);">
-                <div>
-                    <h4 class="title-md mb-xs">{{ call.caller_phone }}</h4>
-                    <p class="body-sm text-muted">{{ call.timestamp|date:"M d, Y H:i" }}</p>
-                </div>
-                <div style="text-align: right;">
-                    <span class="badge-pill" style="
-                        {% if call.priority == 'High' %}background-color: var(--color-brand-coral); color: white;
-                        {% elif call.priority == 'Medium' %}background-color: var(--color-brand-ochre);
-                        {% else %}background-color: var(--color-brand-mint);{% endif %}
-                    ">{{ call.priority }}</span>
-                    <span class="badge-pill">{{ call.category }}</span>
-                </div>
+        <!-- Mic & Chat Area -->
+        <div style="flex: 1; display: flex; flex-direction: column;">
+            <div class="mic-container" style="flex: 1; min-height: 200px;">
+                <button id="mic-btn" class="mic-btn mb-sm">🎙️</button>
+                <div id="status">Click to start speaking...</div>
+                
+                <div id="chat-log"></div>
             </div>
             
-            <div style="background-color: var(--color-canvas); padding: var(--spacing-sm); border-radius: var(--rounded-sm); border: 1px solid var(--color-hairline); margin-bottom: var(--spacing-sm);">
-                <p class="caption-uppercase text-muted mb-xs">Summary</p>
-                <p class="body-sm">{{ call.summary|default:"No summary available" }}</p>
-            </div>
-            
-            <details style="background-color: white; padding: var(--spacing-sm); border-radius: var(--rounded-sm); border: 1px solid var(--color-hairline);">
-                <summary style="cursor: pointer; font-weight: 500; font-size: 14px; color: var(--color-ink);">View Full Transcript</summary>
-                <p class="body-sm mt-sm" style="white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; color: var(--color-muted);">{{ call.transcript|default:"No transcript recorded" }}</p>
-            </details>
-        </div>
-        {% empty %}
-        <div class="content-card cream" style="text-align: center; padding: var(--spacing-section);">
-            <h4 class="title-md text-muted">No calls yet.</h4>
-            <p class="body-sm text-muted mt-sm">Point your Twilio phone number webhook to this server to receive calls!</p>
-        </div>
-        {% endfor %}
-    </div>
-    
-    <!-- Right Column: Appointments -->
-    <div style="display: flex; flex-direction: column; gap: var(--spacing-sm);">
-        <h3 class="display-sm mb-sm">Timeline</h3>
-        
-        {% for appt in upcoming_appointments %}
-        <div class="content-card cream" style="padding: var(--spacing-md); border-left: 4px solid var(--color-brand-peach);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xs);">
-                <h4 class="title-md">{{ appt.lead.name|default:"Unknown Lead" }}</h4>
-                <span style="font-weight: 600; color: var(--color-brand-teal);">{{ appt.scheduled_time|date:"M d, P" }}</span>
-            </div>
-            <p class="body-sm mb-sm">
-                <strong>Phone:</strong> {{ appt.lead.phone_number }}<br>
-                <strong>Email:</strong> {{ appt.lead.email|default:"N/A" }}
-            </p>
-            <div style="background-color: white; padding: var(--spacing-sm); border-radius: var(--rounded-xs); border: 1px solid var(--color-hairline);">
-                <p class="body-sm text-muted">"{{ appt.notes }}"</p>
+            <div style="display: flex; gap: 8px; margin-top: var(--spacing-md);">
+                <input type="text" id="text-input" placeholder="Or type your message here..." style="flex: 1; padding: 10px 15px; border-radius: var(--rounded-md); border: 1px solid var(--color-hairline);">
+                <button class="btn btn-primary" id="send-btn" style="padding: 10px 20px;">Send</button>
             </div>
         </div>
-        {% empty %}
-        <div class="content-card" style="text-align: center; padding: var(--spacing-section);">
-            <h4 class="title-md text-muted">No upcoming appointments.</h4>
-            <p class="body-sm text-muted mt-sm">When callers request a meeting, the AI will automatically schedule them here.</p>
-        </div>
-        {% endfor %}
     </div>
 </div>
 
+<div class="content-card mb-xl" style="padding: var(--spacing-lg);">
+    <h3 class="display-sm mb-md">Extracted Leads</h3>
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--color-hairline);">
+                    <th style="padding: 12px 8px; font-weight: 600;">Name</th>
+                    <th style="padding: 12px 8px; font-weight: 600;">Email</th>
+                    <th style="padding: 12px 8px; font-weight: 600;">Phone</th>
+                    <th style="padding: 12px 8px; font-weight: 600;">Company</th>
+                    <th style="padding: 12px 8px; font-weight: 600;">Score</th>
+                    <th style="padding: 12px 8px; font-weight: 600;">Requirement</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lead in leads %}
+                <tr style="border-bottom: 1px solid var(--color-hairline);">
+                    <td style="padding: 12px 8px;">{{ lead.name|default:"-" }}</td>
+                    <td style="padding: 12px 8px;">{{ lead.email|default:"-" }}</td>
+                    <td style="padding: 12px 8px;">{{ lead.phone|default:"-" }}</td>
+                    <td style="padding: 12px 8px;">{{ lead.company|default:"-" }}</td>
+                    <td style="padding: 12px 8px;">
+                        <span class="badge-pill" style="{% if lead.lead_score > 50 %}background-color: var(--color-brand-mint);{% else %}background-color: var(--color-canvas);{% endif %}">
+                            {{ lead.lead_score }}
+                        </span>
+                    </td>
+                    <td style="padding: 12px 8px;"><small>{{ lead.requirement|truncatechars:50|default:"-" }}</small></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" style="padding: 24px; text-align: center; color: var(--color-muted);">No leads found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="content-card mb-xl" style="padding: var(--spacing-lg);">
+    <h3 class="display-sm mb-md">Voice Sessions</h3>
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 2px solid var(--color-hairline);">
+                    <th style="padding: 12px 8px; font-weight: 600;">Date</th>
+                    <th style="padding: 12px 8px; font-weight: 600;">Associated Lead</th>
+                    <th style="padding: 12px 8px; font-weight: 600;">Summary</th>
+                    <th style="padding: 12px 8px; font-weight: 600;">Action Items</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in voice_sessions %}
+                <tr style="border-bottom: 1px solid var(--color-hairline);">
+                    <td style="padding: 12px 8px; white-space: nowrap;">{{ session.created_at|date:"Y-m-d H:i" }}</td>
+                    <td style="padding: 12px 8px;">{{ session.lead|default:"Unassigned" }}</td>
+                    <td style="padding: 12px 8px;"><small>{{ session.summary|default:"-" }}</small></td>
+                    <td style="padding: 12px 8px;"><small>{{ session.action_items|default:"-" }}</small></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" style="padding: 24px; text-align: center; color: var(--color-muted);">No sessions found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const micBtn = document.getElementById('mic-btn');
+    const statusDiv = document.getElementById('status');
+    const chatLog = document.getElementById('chat-log');
+    const textInput = document.getElementById('text-input');
+    const sendBtn = document.getElementById('send-btn');
+    
+    let isListening = false;
+    let sessionHistory = [];
+    let currentSessionId = Date.now().toString();
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const synth = window.speechSynthesis;
+    
+    async function processMessage(message) {
+        addChatMessage('user', message);
+        statusDiv.innerText = "Processing...";
+        
+        try {
+            const response = await fetch('/support/api/process-voice/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: message,
+                    session_history: sessionHistory,
+                    session_id: currentSessionId
+                })
+            });
+            const data = await response.json();
+            
+            if (data.response) {
+                addChatMessage('ai', data.response);
+                sessionHistory.push({ role: 'user', content: message });
+                sessionHistory.push({ role: 'ai', content: data.response });
+                speakText(data.response);
+                statusDiv.innerText = "Ready.";
+            } else {
+                statusDiv.innerText = "Error getting response.";
+            }
+        } catch (err) {
+            console.error(err);
+            statusDiv.innerText = "Network error.";
+        }
+    }
+
+    if (!SpeechRecognition) {
+        statusDiv.innerText = "Speech Recognition API not supported in this browser. You can still type below.";
+        micBtn.disabled = true;
+        micBtn.style.backgroundColor = "#6c757d";
+    } else {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+            isListening = true;
+            micBtn.classList.add('listening');
+            statusDiv.innerText = "Listening...";
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            micBtn.classList.remove('listening');
+            if (statusDiv.innerText === "Listening...") {
+                statusDiv.innerText = "Click to speak again.";
+            }
+        };
+
+        recognition.onerror = (event) => {
+            isListening = false;
+            micBtn.classList.remove('listening');
+            console.error("Speech recognition error:", event.error);
+            if (event.error === 'not-allowed') {
+                statusDiv.innerText = "Microphone access denied. Please allow mic permissions in your browser.";
+            } else {
+                statusDiv.innerText = "Mic error: " + event.error + ". Please try again.";
+            }
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            processMessage(transcript);
+        };
+
+        micBtn.addEventListener('click', () => {
+            if (isListening) {
+                recognition.stop();
+            } else {
+                synth.cancel();
+                try {
+                    recognition.start();
+                } catch (err) {
+                    console.error("Mic start error:", err);
+                    statusDiv.innerText = "Error starting mic: " + err.message;
+                    isListening = false;
+                    micBtn.classList.remove('listening');
+                }
+            }
+        });
+    }
+
+    function handleSend() {
+        const text = textInput.value.trim();
+        if (text) {
+            textInput.value = '';
+            processMessage(text);
+        }
+    }
+
+    sendBtn.addEventListener('click', handleSend);
+    textInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSend();
+        }
+    });
+    
+    function addChatMessage(role, text) {
+        const div = document.createElement('div');
+        div.className = `chat-bubble ${role}`;
+        div.innerHTML = `<strong>${role === 'user' ? 'You' : 'AI'}:</strong> ${text}`;
+        chatLog.appendChild(div);
+        chatLog.scrollTop = chatLog.scrollHeight;
+    }
+    
+    function speakText(text) {
+        if (synth.speaking) {
+            synth.cancel();
+        }
+        const utterThis = new SpeechSynthesisUtterance(text);
+        utterThis.lang = 'en-US';
+        synth.speak(utterThis);
+    }
+
+    // Chat History and New Chat Logic
+    const newChatBtn = document.getElementById('new-chat-btn');
+    if (newChatBtn) {
+        newChatBtn.addEventListener('click', () => {
+            window.location.reload();
+        });
+    }
+
+    const historyItems = document.querySelectorAll('.history-item');
+    historyItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const transcript = item.getAttribute('data-transcript');
+            sessionHistory = [];
+            chatLog.innerHTML = '';
+            
+            if (transcript) {
+                const lines = transcript.split('\n');
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (!line) return;
+                    
+                    let role = '';
+                    let content = '';
+                    
+                    if (line.startsWith('user:')) {
+                        role = 'user';
+                        content = line.substring(5).trim();
+                    } else if (line.startsWith('ai:')) {
+                        role = 'ai';
+                        content = line.substring(3).trim();
+                    } else if (line.indexOf(':') !== -1) {
+                        const colonIndex = line.indexOf(':');
+                        role = line.substring(0, colonIndex).trim();
+                        content = line.substring(colonIndex + 1).trim();
+                        if (role !== 'user' && role !== 'ai') {
+                            role = 'ai';
+                        }
+                    }
+                    
+                    if (role && content) {
+                        sessionHistory.push({ role: role, content: content });
+                        addChatMessage(role, content);
+                    }
+                });
+                statusDiv.innerText = "Loaded previous chat.";
+            }
+        });
+    });
+</script>
 {% endblock %}

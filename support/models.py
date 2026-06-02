@@ -14,9 +14,34 @@ class Lead(models.Model):
     company = models.CharField(max_length=100, blank=True, null=True)
     requirements = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=50, default='New')
+    lead_score = models.IntegerField(default=0)
 
     def __str__(self):
         return f"Lead: {self.name or self.phone_number} - {self.company}"
+
+class VoiceLead(models.Model):
+    name = models.CharField(max_length=100, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    company = models.CharField(max_length=100, blank=True, null=True)
+    requirement = models.TextField(blank=True, null=True)
+    lead_score = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name or self.email or "Unknown Lead"
+
+class VoiceSession(models.Model):
+    session_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    lead = models.ForeignKey(VoiceLead, on_delete=models.SET_NULL, null=True, blank=True, related_name='voice_sessions')
+    transcript = models.TextField(blank=True, null=True)
+    summary = models.TextField(blank=True, null=True)
+    action_items = models.TextField(blank=True, null=True)
+    duration_seconds = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Browser Voice Session on {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
 class InteractionLog(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
